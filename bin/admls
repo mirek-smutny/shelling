@@ -1,0 +1,271 @@
+#!/bin/bash
+
+###################################################################################################
+#
+# Name: ADMINISTRATION Descriptive
+# Purpose: Descriptive script for administration
+#
+# Changelog:
+#	YYYY-MM-DD			Name			Change
+#
+###################################################################################################
+_SCRIPT=$(echo $0 | sed 's/.*\///' | sed -e 's/\.sh//')
+_LSFMT=" %-15s - %-10s\n"
+
+usage()
+{
+cat << EOF
+$_SPLIT
+	Usage:
+	$_SCRIPT --help - Print this help
+	
+	Options:
+	$_SCRIPT [OPTION]
+		--help				Print this help
+		--list=, -l=			List Inventory
+			inv, inventory		Inventory
+			dir, directory		Directories in ADM Scripts
+			bin, binary		Binary scripts in ADM Scripts
+			cfg, config		Configuration Files
+			all			All above
+		--config=, -cfg=		Show config
+			FILE			Show configuration filename  
+
+$_SPLIT
+EOF
+}
+
+arg_parse()
+{
+
+I_LST=0
+I_LST_INV=
+LSTARG=
+I_CFG=0
+
+for ARG do
+	case ${ARG} in
+		--help|-h)
+			usage
+			;;
+		--list=*|-l=*)
+			LSTARG=$(echo "${ARG}" | sed -e 's/^[^=]*=//')
+			case ${LSTARG} in
+				inv|inventory)
+					I_LST_INV="INVENTORY"
+					;;
+				dir|directory)
+					I_LST_INV="DIRECTORY"
+					;;
+				bin|binary)
+					I_LST_INV="BINARY"
+					;;
+				cfg|config)
+					I_LST_INV="CONFIG"
+					;;
+				all)
+					I_LST_INV="ALL"
+					;;
+				*)
+					echo "${_SCRIPT}: Unknown list directive - ${ARG}"
+					usage
+					exit 1
+					;;
+			esac
+			I_LST=1
+			;;
+		--config=*|-cfg=*)
+			I_LST_CFG=$(echo "${ARG}" | sed -e 's/^[^=]*=//' -e 's/\.[^.]*$//')
+			CFG_FILE=${ADM_BASE}/cfg/${I_LST_CFG}.cfg
+			if [ ! -f ${CFG_FILE} ]; then
+				echo "${_SCRIPT} - Configuration File:	${I_LST_CFG} not found"
+				exit 1
+			fi
+			I_CFG=1
+			;;
+		*)
+			echo "${_SCRIPT}: Unknown argument - ${ARG}"
+			usage
+			exit 1
+			;;
+	esac
+done
+
+
+
+}
+
+dirs()
+{
+
+cat << EOF
+$_SPLIT
+Directories:
+EOF
+
+while IFS=: read line;
+do
+	var=$(echo ${line} | cut -d: -f1)
+	if [ "${var}" == "\$ADM_BASE" ]; then
+		file=$(echo ${line} | cut -d: -f2)
+		comm=$(echo ${line} | cut -d: -f4)
+		#echo "	"${var}/${file}"		  - "${comm}
+		printf "${_LSFMT}" "${var}/${file}" "${comm}"
+	fi
+done < "${ADM_INV_FILE}"
+
+cat << EOF
+$_SPLIT
+EOF
+
+}
+
+invs()
+{
+
+cat << EOF
+$_SPLIT
+Inventory:
+EOF
+
+while IFS=: read line;
+do
+	var=$(echo ${line} | cut -d: -f1)
+	if [ "${var}" == "\$ADM_INV" ]; then
+		file=$(echo ${line} | cut -d: -f2)
+		comm=$(echo ${line} | cut -d: -f4)
+		#echo "	"${var}/${file}"		- "${comm}
+		printf "${_LSFMT}" "${var}/${file}" "${comm}"
+	fi
+done < "${ADM_INV_FILE}"
+
+cat << EOF
+$_SPLIT
+EOF
+
+}
+
+binaries()
+{
+
+cat << EOF
+$_SPLIT
+Binaries:
+EOF
+
+while IFS=: read line;
+do
+	var=$(echo ${line} | cut -d: -f1)
+	if [ "${var}" == "\$ADM_BIN" ]; then
+		file=$(echo ${line} | cut -d: -f2)
+		comm=$(echo ${line} | cut -d: -f4)
+		#echo "	"${var}/${file}"		    - "${comm}
+		printf "${_LSFMT}" "${var}/${file}" "${comm}"
+	fi
+done < "${ADM_INV_FILE}"
+
+cat << EOF
+$_SPLIT
+EOF
+
+}
+
+configs()
+{
+
+cat << EOF
+$_SPLIT
+Config Files:
+EOF
+
+while IFS=: read line;
+do
+	var=$(echo ${line} | cut -d: -f1)
+	if [ "${var}" == "\$ADM_CFG" ]; then
+		file=$(echo ${line} | cut -d: -f2)
+		comm=$(echo ${line} | cut -d: -f4)
+		#echo "	"${var}/${file}"		    - "${comm}
+		printf "${_LSFMT}" "${var}/${file}" "${comm}"
+	fi
+done < "${ADM_INV_FILE}"
+
+cat << EOF
+$_SPLIT
+EOF
+
+}
+
+##################################################################################################
+
+# Main variables
+_REPO="${ADM_BASE}/bin/shell_repo"
+_GVAR="${ADM_BASE}/inv/vars.inv"
+_CFG="${ADM_BASE}/cfg/admls.cfg"
+
+# Get repository functions
+source ${_REPO}
+
+if [ "$?" -ne 0 ]; then
+	echo "ERROR - repository source not found"
+	exit 1
+fi
+
+# Read variable and values
+read_cfg ${_GVAR}
+read_cfg ${_CFG}
+
+arg_parse $*
+
+if [ -z "$1" ]; then
+	usage
+fi
+
+check_pid $$
+
+if [ "${I_LST}" -eq 1 ]; then
+	case "${I_LST_INV}" in
+		"INVENTORY")
+			invs
+			;;
+		"DIRECTORY")
+			dirs
+			;;
+		"BINARY")
+			binaries
+			;;
+		"CONFIG")
+			configs
+			;;
+		"ALL")
+			invs
+			dirs
+			configs
+			binaries
+			;;
+		*)
+			echo "${_SCRIPT} - Unknown value for \$I_LST_INV"
+			usage
+			;;
+	esac
+fi
+
+if [ "${I_CFG}" -eq 1 ]; then
+
+	_CFGFMT=" %-10s = %-45s - %-10s\n"
+	echo $_SPLIT
+
+	printf "%-20s %-10s\n" "Configuration File:" "${I_LST_CFG}"
+	while IFS=: read line;
+	do
+		var=$(echo ${line} | cut -d: -f1)
+		value=$(echo ${line} | cut -d: -f2)
+		comm=$(echo ${line} | cut -d: -f3)
+		if [ "${var:0:1}" != "#" ]; then
+			printf "${_CFGFMT}" "${var}" "${value}" "${comm}"
+		fi
+	done < "${CFG_FILE}"
+	echo $_SPLIT
+fi
+
+rm ${_PID}
+

@@ -1,0 +1,203 @@
+#!/bin/bash
+
+###################################################################################################
+#
+# Name: vmod
+# Purpose: Verify mod of inventory files
+#
+# Changelog:
+#       YYYY-MM-DD                      Name                    Change
+#
+###################################################################################################
+_SCRIPT=$(echo $0 | sed 's/.*\///' | sed -e 's/\.sh//')
+
+usage()
+{
+cat << EOF
+$_SPLIT
+        Usage:
+        $_SCRIPT --help - Print this help
+
+        Options:
+        $_SCRIPT [OPTION]
+                --help                          Print this help
+                --list=PTN, -l=PTN              List Inventory - Pattern
+                --list, -l                      List All Inventory
+                --cross-check, -cc      Crosscheck
+
+$_SPLIT
+EOF
+}
+
+arg_parse()
+{
+
+I_LST=0
+I_LST_FILE=
+LSTPTN=
+I_CC=0
+
+for ARG do
+        case ${ARG} in
+                --help|-h)
+                        usage
+                        ;;
+                --list=*|-l=*)
+                        LSTPTN=$(echo "${ARG}" | sed -e 's/^[^=]*=//')
+                        I_LST=1
+                        ;;
+                --list|-l)
+                        I_LST=1
+                        LSTPTN="$"
+                        ;;
+                --cross-check|-cc)
+                        I_CC=1
+                        ;;
+                *)
+                        echo "${_SCRIPT}: Unknown argument - ${ARG}"
+                        usage
+                        exit 1
+                        ;;
+        esac
+done
+
+}
+
+list_files()
+{
+
+echo ${_SPLIT}
+while IFS=: read line;
+do
+        dir=$(echo ${line} | cut -d: -f1)
+        file=$(echo ${line} | cut -d: -f2)
+        mod=$(echo ${line} | cut -d: -f3)
+        if [ ! "${line:0:1}" == "#" ]; then
+                if [ ! -z "$dir" ]; then
+                        if [ "$(grep ${LSTPTN} <(echo ${line}) | wc -l)" -gt 0 ]; then
+                                eval vdir=$(echo ${line} | cut -d: -f1)
+                                vdir=${vdir}"/"
+                                cmod=$(stat -c %a ${vdir}${file} 2>/dev/null)
+                                if [ "$?" -eq 0 ]; then
+                                        if [ ! "${mod}" == "${cmod}" ]; then
+                                                STATUS=" [WARNING]"
+                                                let _ERRS=${_ERRS}+1
+                                        else
+                                                STATUS="   [OK]   "
+                                                let _CLEAR=${_CLEAR}+1
+                                        fi
+                                else
+                                        STATUS=" [ERROR] "
+                                fi
+                                let _ALL=${_ALL}+1
+                                if [ "${PREVDIR}" != "${dir}" ] || [ "${PREVDIR}" == "" ]; then
+                                        echo "${_SPLIT}"
+                                        printf "${_HEAD}" "STATUS" "CURRENT_MODE" "ADM_MODE" "FILE"
+                                        PREVDIR="${dir}"
+                                fi
+                                printf "  %-12s %-26s %-22s %-15s\n" ${STATUS} ${cmod} ${mod} "${dir}/${file}"
+                        fi
+                fi
+        fi
+done < "${ADM_INV_FILE}"
+
+}
+
+cross_check()
+{
+
+LASTDIR=
+echo ${_SPLIT}
+
+printf "${_HEAD}" "STATUS" "CURRENT_MODE" "ADM_MODE" "FILE"
+
+while IFS=: read line;
+do
+        dir=$(echo ${line} | cut -d: -f1)
+        file=$(echo ${line} | cut -d: -f2)
+
+        if [ ! "${line:0:1}" == "#" ]; then
+                if [ ! -z "$dir" ]; then
+                        eval vdir=$(echo ${line} | cut -d: -f1)
+
+                        ADMINV_FILES=$(cat ${ADM_BASE}/inv/files.inv | grep "${dir}:" | cut -d: -f2 | sort)
+                        ADM_DIR=$(ls ${vdir} | grep -vE "sample")
+                        if [[ "${ADMINV_FILES}" == "${ADM_DIR}" ]]; then
+#                               echo "VARS ARE SAME"
+                        continue
+                        else
+#                               echo "VARS DIFFERENT"
+                        DDIFF=$(comm -3 --output-delimiter=: <(echo "${ADMINV_FILES}") <(echo "${ADM_DIR}") | cut -d: -f2)
+                        for FILE in ${DDIFF}
+                        do
+                                CURRDIR=${dir}
+                                if [ ! "${LASTDIR}" == "${dir}" ] || [ "${LASTDIR}" == "" ]; then
+                                        let _ERRS=${_ERRS}+1
+                                        printf " %-12s %-24s %-20s %-12s\n" "[WARNING]" "---" "---" "${dir}/${FILE}"
+                                fi
+                        done
+                        LASTDIR=${dir}
+                fi
+        fi
+
+fi
+let _ALL=${_ALL}+1
+
+done < "${ADM_INV_FILE}"
+
+}
+
+source ~/.profile
+
+# Main variables
+_REPO="${ADM_BASE}/bin/shell_repo"
+_GVAR="${ADM_BASE}/inv/vars.inv"
+
+# Get repository functions
+source ${_REPO}
+
+if [ "$?" -ne 0 ]; then
+        echo "ERROR - repository source not found"
+        exit 1
+fi
+
+_ERRS=0
+_CLEAR=0
+_ALL=0
+_HEAD="  %-10s %-25s %-25s %-25s %-25s\n"
+#_HEAD="  STATUS          CURRENT_MODE       ADM_MODE           FILE    "
+PREVDIR=
+
+# Read variable and values
+read_cfg ${_GVAR}
+
+# Main
+
+arg_parse $*
+
+if [ -z "$1" ]; then
+        usage
+fi
+
+check_pid $$
+
+if  [ ${I_LST} -eq 1 ]; then
+        list_files "${LSTPTN}"
+fi
+
+if [ ${I_CC} -eq 1 ]; then
+        cross_check
+fi
+
+echo "${_SPLIT}"
+echo "Checked Files: ${_ALL}"
+echo "Errors: ${_ERRS}"
+echo "Clear : ${_CLEAR}"
+echo "${_SPLIT}"
+
+if [ "$?" -eq 1 ]; then
+        rm ${_PID}
+        exit 1;
+fi
+
+rm ${_PID}

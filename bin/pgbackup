@@ -1,0 +1,171 @@
+#!/bin/bash
+
+###################################################################################################
+#
+# Name: pgbackup
+# Purpose: PostgreSQL full backup
+#
+# Changelog:
+#	YYYY-MM-DD			Name			Change
+#
+###################################################################################################
+
+usage()
+{
+
+cat << EOF
+${_SPLIT}
+${_SCRIPT} [OPTION]
+
+Options:
+	--help|-h		Print this usage
+	--tar|-t		Tar backup directory
+	--gzip|-gz		Gzip tarred backup directory
+
+${_SPLIT}
+EOF
+
+}
+
+# Function: argparse_pg
+arg_parse()
+{
+
+ARG_TAR=0
+ARG_GZIP=0
+
+for ARG do
+	case "${ARG}" in
+		--tar|-t)
+			ARG_TAR=1
+			;;
+		--gzip|-gz)
+			ARG_GZIP=1
+			;;
+		--help|-h)
+			usage
+			exit 0
+			;;
+		*)
+			echo "Unknown argument"
+			exit 1
+			;;
+	esac
+done
+
+}
+
+
+source ~/.profile
+
+# Main variables
+_REPO="${ADM_BASE}/bin/shell_repo"
+_GVAR="${ADM_BASE}/inv/vars.inv"
+_CFG="${ADM_BASE}/cfg/pgbackup.cfg"
+ARG1=$0
+
+# Get repository functions
+source ${_REPO}
+
+if [ "$?" -ne 0 ]; then
+	echo "ERROR - repository source not found"
+	exit 1
+fi
+
+# Read variables and values
+read_cfg ${_GVAR}
+read_cfg ${_CFG}
+
+arg_parse $*
+
+ARG1=$(echo $ARG1 | sed 's/.*\///' | sed -e 's/\.sh//')
+
+comp2var "${ARG1}" "${_SCRIPT}"
+
+if [ "$?" -ne 0 ]; then
+	exit 5;
+fi
+
+check_pid $$
+
+# Set log directory
+LOG_DIR=${LOG_ROOT}/${_SCRIPT}
+mk_dir ${LOG_DIR}
+
+# Define log file
+if [ "$?" -eq 0 ]; then
+	file_date
+	LOG_FILE=${LOG_DIR}/${_SCRIPT}.log
+else
+	echo $(log_date) "ERROR - ${LOG_FILE} - not exists"
+fi
+
+BCK_DIR=${BCK_ROOT}/${LABEL}
+
+log "###############################################"
+log "# BCK_ROOT	: ${BCK_ROOT}"
+log "# BCK_DIR	: ${BCK_DIR}"
+log "# LABEL	: ${LABEL}"
+log "#"
+log "# PostgreSQL Variables"
+log "# PGUSER	: ${PGUSER}"
+log "# PGHOST	: ${PGHOST}"
+log "# PGPORT	: ${PGPORT}"
+log "###############################################"
+# Main
+
+MSG="Creation of Backup directory - ${BCK_DIR}"
+mk_dir ${BCK_DIR}
+
+check_exit $? "${MSG}"
+
+if [ "$?" -eq 0 ]; then
+	MSG="Changing owner to postgres"
+	chown postgres:postgres ${BCK_DIR}
+	check_exit $? "${MSG}"
+fi
+
+MSG="PGBackup"
+su - postgres -c "/bin/pg_basebackup -D ${BCK_DIR} -F p -R -X stream -l ${LABEL} -P -h ${PGHOST} -p ${PGPORT} -U ${PGUSER}" 2>> ${LOG_FILE}
+check_exit $? "${MSG}"
+
+if [ "${ARG_TAR}" -eq 1 ] && [ "${ARG_GZIP}" -eq 1  ]; then
+
+#	cd ${BCK_ROOT}
+	TAR_DIR=${BCK_DIR}.tar
+	MSG="Tar Backup"
+	su - postgres -c "cd ${BCK_ROOT}; tar -cf ${TAR_DIR} ${LABEL} --remove-files"
+	check_exit $? "${MSG}"
+
+	MSG="Gzip Backup"
+	su - postgres -c "cd ${BCK_ROOT}; gzip ${TAR_DIR}"
+	check_exit $? "${MSG}"
+
+elif [ "${ARG_TAR}" -eq 1 ] && [ "${ARG_GZIP}" -eq 0 ]; then
+
+#	cd ${BCK_ROOT}
+	TAR_DIR=${BCK_DIR}.tar
+	MSG="Tar Backup"
+	su - postgres -c "cd ${BCK_ROOT}; tar -cf ${TAR_DIR} ${LABEL} --remove-files"
+	check_exit $? "${MSG}"
+
+elif [ "${ARG_TAR}" -eq 0 ] && [ "${ARG_GZIP}" -eq 1 ]; then
+
+	MSG="Gzip Backup"
+	su - postgres -c "gzip ${BCK_DIR}"
+	check_exit $? "${MSG}"
+
+fi
+
+MSG="Clean backup"
+find ${BCK_ROOT} -maxdepth 1 -mtime +${BCK_DAYS} -exec rm -rf {} \;
+check_exit $? "${MSG}"
+
+report_err
+
+if [ "$?" -eq 1 ]; then
+	rm ${_PID}
+	exit 1;
+fi
+
+rm ${_PID}

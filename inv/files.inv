@@ -1,0 +1,61 @@
+# DIRECTORY:NAME:PRIVS:OWNER:GROUP:COMMENT
+
+$ADM_BASE::750:Administration Scripts - Root
+$ADM_BASE:bin:750:Executable Script Files
+$ADM_BASE:cfg:750:Configuration Files
+$ADM_BASE:sql:750:SQL Script Files
+$ADM_BASE:log:750:Logging Directory
+$ADM_BASE:inv:750:Inventory Directory
+$ADM_BASE:tmp:750:Temporary Directory
+
+$ADM_BIN:admls:700:Administration Descriptive Script
+$ADM_BIN:vmod:700:Verify Mod of Inventory Files
+$ADM_BIN:smod:700:Set Mod of Inventory Files
+$ADM_BIN:check_df:710:Check usage of storage
+$ADM_BIN:pgdbsize:710:Check size of PostgreSQL DB
+$ADM_BIN:dokuwiki_bck:700:Backup DokuWiki directory
+$ADM_BIN:pghb:700:Heartbeat for PostgreSQL DB
+$ADM_BIN:pgbackup:700:Backup PostgreSQL DB
+$ADM_BIN:shell_repo:711:Shell Repository for Admin Scripts
+$ADM_BIN:rsync_bck:700:RSYNC Backup directory
+$ADM_BIN:salias:711:Set alias for current user - add to ~/.profile
+$ADM_BIN:envset:700:Set environment variables from Admin Scripts
+$ADM_BIN:vown:700:Verify owner of Inventory Files
+$ADM_BIN:sown:700:Set owner of Inventory Files
+$ADM_BIN:pokus:700:Pokusny
+
+$ADM_CFG:admls.cfg:640:Config for Administration Descriptive Script
+$ADM_CFG:check_df.cfg:640:Config for check usage of storage
+$ADM_CFG:dokuwiki_bck.cfg:640:Config for DokuWiki Backup
+$ADM_CFG:pgbackup.cfg:640:Config for PostgreSQL DB backup
+$ADM_CFG:pgdbsize.cfg:640:Config for check size of PostgreSQL DB
+$ADM_CFG:pghb.cfg:640:Config for heartbeat of PostgreSQL DB
+$ADM_CFG:rsync_bck.cfg:640:Config for RSYNC backup
+$ADM_CFG:template.cfg:640:Template Config File
+$ADM_CFG:logrotate:755::Log Rotate directory
+
+$ADM_CFG_LR:shell_repo.cfg:640:Log Rotate Config File
+
+$ADM_INV:files.inv:600:Files Inventory File
+$ADM_INV:vars.inv:600:Variables Inventory File
+$ADM_INV:alias.inv:600:Alias Inventory File
+$ADM_INV:owner.inv:600:Owners Inventory File
+
+$ADM_LOG:os:700
+$ADM_LOG:pg:700
+$ADM_LOG:ora:700
+$ADM_LOG:db2:700
+
+$ADM_SQL:postgresql:700:PostgreSQL scripts
+
+$ADM_SQL_PG:activity.sql:600:Waiting sessions
+$ADM_SQL_PG:conninfo.sql:600:Waiting sessions
+$ADM_SQL_PG:locks.sql:600:Waiting sessions
+$ADM_SQL_PG:settings.sql:600:Waiting sessions
+$ADM_SQL_PG:tablesize.sql:600:Waiting sessions
+$ADM_SQL_PG:uptime.sql:600:Waiting sessions
+$ADM_SQL_PG:waits.sql:600:Waiting sessions
+
+#ADM_LOG:
+#ADM_INV:
+#ADM_TMP:

@@ -1,0 +1,87 @@
+#!/bin/bash
+
+###################################################################################################
+#
+# Name: vown
+# Purpose: Verify owner of inventory files
+#
+# Changelog:
+#	YYYY-MM-DD			Name			Change
+#
+###################################################################################################
+_SCRIPT=$(echo $0 | sed 's/.*\///' | sed -e 's/\.sh//')
+
+source ~/.profile
+
+# Main variables
+_REPO="${ADM_BASE}/bin/shell_repo"
+_GVAR="${ADM_BASE}/inv/vars.inv"
+
+# Get repository functions
+source ${_REPO}
+
+if [ "$?" -ne 0 ]; then
+	echo "ERROR - repository source not found"
+	exit 1
+fi
+
+_ERRS=0
+_CLEAR=0
+_ALL=0
+_HEAD="  %-10s %-25s %-25s %-25s %-25s\n"
+#_HEAD=" STATUS		CURRENT_OWNER:GROUP		 ADM_OWNER:GROUP	FILE"
+PREVDIR=
+
+# Read variable and values
+
+read_cfg ${_GVAR}
+
+# Main
+
+check_pid $$
+
+while IFS=: read line;
+do
+	file=$(echo ${line} | cut -d: -f1)
+	own_group=$(echo ${line} | cut -d: -f2,3)
+	#echo ${own_group}
+	if [ ! "${line:0:1}" == "#" ]; then
+		if [ ! -z "$file" ]; then
+			eval vfile=$(echo ${line} | cut -d: -f1)
+			eval vown_group=$(echo ${line} | cut -d: -f2,3)
+			cown_group=$(stat -c %U:%G ${vfile} 2>/dev/null)
+			if [ "$?" -eq 0 ]; then
+				if [ ! "${vown_group}" == "${cown_group}" ]; then
+					STATUS=" [WARNING]"
+					let _ERRS=${_ERRS}+1
+				else
+					STATUS="   [OK]   "
+					let _CLEAR=${_CLEAR}+1
+				fi
+			else
+				STATUS=" [ERROR] "
+			fi
+			let _ALL=${_ALL}+1
+			if [ "${PREVDIR}" == "" ]; then
+				echo "${_SPLIT}"
+				printf "${_HEAD}" "STATUS" "CURRENT_OWNER:GROUP" "ADM_OWNER:GROUP" "FILE"
+				PREVDIR=${file}
+			fi
+			printf "  %-10s %-25s %-25s %-25s %20s\n" ${STATUS} ${cown_group} ${vown_group} ${vfile}
+		fi
+	fi
+done < "${ADM_INV_OWNER}"
+
+echo "${_SPLIT}"
+echo "Checked Files: ${_ALL}"
+echo "Errors: ${_ERRS}"
+echo "Clear : ${_CLEAR}"
+echo "${_SPLIT}"
+
+if [ "$?" -eq 1 ]; then
+	rm ${_PID}
+	exit 1;
+fi
+
+rm ${_PID}
+

@@ -1,0 +1,18 @@
+# VARIABLE:VALUE
+_UID:root
+_GID:root
+ADM_BASE:/usr/local/adm
+ADM_LOG:${ADM_BASE}/log
+ADM_BIN:${ADM_BASE}/bin
+ADM_CFG:${ADM_BASE}/cfg
+ADM_CFG_LR:${ADM_BASE}/cfg
+ADM_INV:${ADM_BASE}/inv
+ADM_SQL:${ADM_BASE}/sql
+ADM_SQL_PG:${ADM_BASE}/sql/postgresql
+ADM_TMP:${ADM_BASE}/tmp
+ADM_INV_FILE:${ADM_INV}/files.inv
+ADM_INV_VARS:${ADM_INV}/vars.inv
+ADM_INV_ALIAS:${ADM_INV}/alias.inv
+ADM_INV_OWNER:${ADM_INV}/owner.inv
+LOG_ROOT:${ADM_LOG}
+_PID:${ADM_TMP}/${_SCRIPT}.pid:PID file

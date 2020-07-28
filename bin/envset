@@ -1,0 +1,41 @@
+#!/bin/bash
+
+###################################################################################################
+#
+# Name: envset
+# Purpose: Set environment variables
+#
+# Changelog:
+#       YYYY-MM-DD                      Name                    Change
+#
+###################################################################################################
+
+source ~/.profile
+
+# Main variables
+_REPO="${ADM_BASE}/bin/shell_repo"
+_GVAR="${ADM_BASE}/inv/vars.inv"
+
+# Get repository functions
+source ${_REPO}
+
+if [ "$?" -ne 0 ]; then
+        echo "ERROR - repository source not found"
+        exit 1
+fi
+
+# Read variable and values
+
+read_cfg ${_GVAR}
+
+while IFS=: read line;
+do
+        var=$(echo ${line} | cut -d: -f1)
+        val=$(echo ${line} | cut -d: -f2)
+        if [ ! "${line:0:1}" == "#" ]; then
+                if [ ! -z "${var}" ]; then
+                        eval ${var}=${val}
+                        export ${var}
+                fi
+        fi
+done < "${_GVAR}"
