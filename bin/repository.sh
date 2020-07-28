@@ -14,6 +14,7 @@ _SPLIT="########################################################################
 DATESTART=$(date '+%Y%m%d_%H%M%S')
 
 # Function: Compare 2 variables
+# Expected format: comp2var $VARIABLE1 $VARIABLE2
 comp2var()
 {
 
