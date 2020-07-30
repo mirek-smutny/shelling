@@ -7,8 +7,9 @@
 #
 # Changelog:
 #       YYYY-MM-DD                      Name                    Change
-#
+#		2020-07-30						smutnym					Usage, set_env, arg_parse
 ###################################################################################################
+_SCRIPT=$(echo $0 | sed 's/.*\///' | sed -e 's/\.sh//')
 
 source ~/.profile
 
@@ -24,18 +25,85 @@ if [ "$?" -ne 0 ]; then
         exit 1
 fi
 
+usage()
+{
+cat << EOF
+$_SPLIT
+	Usage:
+	$_SCRIPT --help - Print this help
+	
+	Options:
+	$_SCRIPT [OPTION]
+		--help				Print this help
+		--list=, -l=			List Inventory
+			inv, inventory		Inventory
+			dir, directory		Directories in ADM Scripts
+			bin, binary		Binary scripts in ADM Scripts
+			cfg, config		Configuration Files
+			all			All above
+		--config=, -cfg=		Show config
+			FILE			Show configuration filename  
+
+$_SPLIT
+EOF
+}
+
+set_env()
+{
+
+ENV=$1
+
+ls -l ${ADM_CFG} | egrep "env_(ora|pg)_${ENV}.cfg"
+
+if [ $? -eq 0 ]; then
+	ENVFILE=$(ls | egrep "env_(ora|pg)_${ENV}.cfg")
+	for i in $(cat ${ADM_CFG}/${ENVFILE} | egrep -v "^#|^$"); do
+		VAR=$(echo ${i} | cut -f1 -d:)
+		VAL=$(echo ${i} | cut -f2 -d:)
+		eval $VAR=$VAL
+		export ${VAR}
+	done
+else
+	echo "Environment Config File - ${ENV} not found!"
+	exit 1
+fi
+
+}
+
+arg_parse()
+{
+
+I_LST=0
+I_ENV=0
+
+for ARG do
+	case ${ARG} in
+		--help|-h)
+			usage
+			;;
+		--list*|-l*)
+			I_LST=1
+			;;
+		*)
+			set_env
+			;;
+	esac
+done
+
+
+
+}
+
 # Read variable and values
+
+arg_parse $*
+
+if [ -z "$1" ]; then
+	usage
+fi
 
 read_cfg ${_GVAR}
 
-while IFS=: read line;
-do
-        var=$(echo ${line} | cut -d: -f1)
-        val=$(echo ${line} | cut -d: -f2)
-        if [ ! "${line:0:1}" == "#" ]; then
-                if [ ! -z "${var}" ]; then
-                        eval ${var}=${val}
-                        export ${var}
-                fi
-        fi
-done < "${_GVAR}"
+if [ "${I_LST}" -eq 1 ]; then
+		ls ${ADM_CFG} | egrep "env_(ora|pg)*"
+fi
